@@ -173,7 +173,8 @@ only happen as a deliberate major version.
 
 Push a tag `vX.Y.Z`; the publish workflow tests, packs every package at that version and pushes
 them to nuget.org.
-It needs a repository secret `NUGET_API_KEY`.
+It uses nuget.org Trusted Publishing (OIDC): no API key is stored. The policy on nuget.org is bound to
+`nugi1/Patterns.DDD`, workflow `publish.yml` and the GitHub environment `production`.
 
 ## License
 

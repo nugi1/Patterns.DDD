@@ -8,6 +8,11 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Must match the nuget.org Trusted Publishing policy (workflow publish.yml, environment production).
+    environment: production
+    permissions:
+      contents: read
+      id-token: write   # lets GitHub issue the OIDC token that NuGet/login exchanges for a temporary key
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -20,9 +25,16 @@ jobs:
       - run: dotnet test Patterns.DDD.slnx -c Release
       # Packs every packable project (tests set IsPackable=false); versions move in lockstep.
       - run: dotnet pack Patterns.DDD.slnx -c Release -p:Version=$VERSION -o out
+
+      # Trusted Publishing: no stored secret. The key is valid for 1 hour, so log in right before pushing.
+      - name: NuGet login (OIDC → temporary API key)
+        id: login
+        uses: NuGet/login@v1
+        with:
+          user: nugs   # nuget.org profile name of the policy's package owner
       - name: Push to nuget.org
         run: >
           dotnet nuget push "out/*.nupkg"
-          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --api-key "${{ steps.login.outputs.NUGET_API_KEY }}"
           --source https://api.nuget.org/v3/index.json
           --skip-duplicate
