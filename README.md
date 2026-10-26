@@ -13,8 +13,9 @@ dotnet add package Patterns.DDD
 | `Entity<TId>` | Identity-based equality |
 | `AggregateRoot<TId>` | Consistency boundary that records domain events |
 | `IDomainEvent` | Marker for things that happened |
-| `Result`, `Result<T>`, `Error` | Expected failures without exceptions |
-| `IRule<TContext>`, `Rules.CheckAll` | Named business rules, evaluated in order, stopping at the first failure |
+| `Result`, `Result<T>`, `Error` | Expected failures without exceptions; `Map`, `Bind`, `Ensure`, `Match` |
+| `IRule<TContext>`, `Rules` | Named business rules, composed with `All`, `When`, `ForEach`; evaluated in order, stopping at the first failure |
+| `IHasDomainEvents` | Non-generic access to pending events for infrastructure (outbox) |
 | `DomainException` | Broken invariants that indicate a bug |
 
 There is deliberately no `ValueObject` base class (use `record`) and no generic repository
@@ -45,6 +46,22 @@ public sealed class AmountIsPositive : IRule<decimal>
     public Result Check(decimal amount) =>
         amount > 0 ? Result.Success() : new Error("amount-not-positive", "Amount must be > 0");
 }
+```
+
+Compose rules and chain results. Evaluation order is part of the contract: the first broken
+rule's `Error` is what you get back.
+
+```csharp
+IRule<Order> orderRules = Rules.All(
+    new HasItems(),
+    Rules.ForEach((Order o) => o.Lines, new QuantityIsPositive()),
+    Rules.When((Order o) => o.IsExpress, new FitsExpressLimits()));
+
+Result<Receipt> receipt = Parse(request)
+    .Ensure(orderRules)
+    .Bind(order => order.Pay().Map(() => new Receipt(order.Id)));
+
+return receipt.Match(r => Results.Ok(r), e => Results.BadRequest(e.Code));
 ```
 
 Dequeue events after saving, then publish them:

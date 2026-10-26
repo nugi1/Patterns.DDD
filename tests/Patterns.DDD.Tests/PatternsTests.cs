@@ -33,6 +33,27 @@ public class PatternsTests
         Assert.NotEqual(new Counter(Guid.NewGuid()), new Counter(Guid.NewGuid()));
 
     [Fact]
+    public void Entities_with_default_id_are_only_equal_to_themselves()
+    {
+        var a = new Counter(Guid.Empty);
+        Assert.NotEqual(a, new Counter(Guid.Empty));
+        Assert.True(a == a);
+        Assert.True(a != new Counter(Guid.Empty));
+    }
+
+    [Fact]
+    public void Infrastructure_can_clear_events_through_the_interface()
+    {
+        var counter = new Counter(Guid.NewGuid());
+        counter.Tick();
+
+        IHasDomainEvents tracked = counter;
+        Assert.Single(tracked.DomainEvents);
+        tracked.ClearDomainEvents();
+        Assert.Empty(counter.DomainEvents);
+    }
+
+    [Fact]
     public void Aggregate_records_and_dequeues_events()
     {
         var counter = new Counter(Guid.NewGuid());

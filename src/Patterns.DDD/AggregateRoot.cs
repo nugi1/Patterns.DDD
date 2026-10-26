@@ -5,7 +5,7 @@ namespace Patterns.DDD;
 /// and records what happened as domain events.
 /// </summary>
 /// <typeparam name="TId">The identity type.</typeparam>
-public abstract class AggregateRoot<TId> : Entity<TId>
+public abstract class AggregateRoot<TId> : Entity<TId>, IHasDomainEvents
     where TId : notnull
 {
     private readonly List<IDomainEvent> _domainEvents = [];
@@ -13,15 +13,19 @@ public abstract class AggregateRoot<TId> : Entity<TId>
     /// <summary>Creates the aggregate root with its identity.</summary>
     protected AggregateRoot(TId id) : base(id) { }
 
-    /// <summary>Events raised since they were last dequeued.</summary>
+    /// <summary>Events raised since they were last dequeued or cleared.</summary>
     public IReadOnlyList<IDomainEvent> DomainEvents => _domainEvents;
 
     /// <summary>Records that something happened inside the aggregate.</summary>
-    protected void Raise(IDomainEvent domainEvent) => _domainEvents.Add(domainEvent);
+    protected void Raise(IDomainEvent domainEvent)
+    {
+        ArgumentNullException.ThrowIfNull(domainEvent);
+        _domainEvents.Add(domainEvent);
+    }
 
     /// <summary>
-    /// Returns the recorded events and clears them. Call after the aggregate's changes are
-    /// persisted, so nothing is published for a change that failed to save.
+    /// Returns the recorded events and clears them. Use this when you dispatch events yourself;
+    /// with an outbox, infrastructure reads <see cref="DomainEvents"/> and clears them once stored.
     /// </summary>
     public IReadOnlyList<IDomainEvent> DequeueDomainEvents()
     {
@@ -29,4 +33,8 @@ public abstract class AggregateRoot<TId> : Entity<TId>
         _domainEvents.Clear();
         return events;
     }
+
+    // Explicit: domain code never sees a "clear" button on the aggregate; only infrastructure,
+    // holding the interface, can drop events.
+    void IHasDomainEvents.ClearDomainEvents() => _domainEvents.Clear();
 }
