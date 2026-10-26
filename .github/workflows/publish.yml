@@ -1,0 +1,27 @@
+name: Publish to nuget.org
+
+# Push a tag like v1.0.0 to publish that version.
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            8.0.x
+            10.0.x
+      - name: Version from tag
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+      - run: dotnet test Patterns.DDD.slnx -c Release
+      - run: dotnet pack src/Patterns.DDD/Patterns.DDD.csproj -c Release -p:Version=$VERSION -o out
+      - name: Push to nuget.org
+        run: >
+          dotnet nuget push "out/*.nupkg"
+          --api-key "${{ secrets.NUGET_API_KEY }}"
+          --source https://api.nuget.org/v3/index.json
+          --skip-duplicate

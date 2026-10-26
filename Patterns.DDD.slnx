@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Patterns.DDD/Patterns.DDD.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Patterns.DDD.Tests/Patterns.DDD.Tests.csproj" />
+  </Folder>
+</Solution>
