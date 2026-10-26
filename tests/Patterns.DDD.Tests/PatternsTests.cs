@@ -36,8 +36,9 @@ public class PatternsTests
     public void Entities_with_default_id_are_only_equal_to_themselves()
     {
         var a = new Counter(Guid.Empty);
+        var sameReference = a; // a == a directly is compiler error CS1718 under warnings-as-errors
         Assert.NotEqual(a, new Counter(Guid.Empty));
-        Assert.True(a == a);
+        Assert.True(a == sameReference);
         Assert.True(a != new Counter(Guid.Empty));
     }
 
