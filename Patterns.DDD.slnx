@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Patterns.DDD/Patterns.DDD.csproj" />
+    <Project Path="src/Patterns.DDD.Application/Patterns.DDD.Application.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Patterns.DDD.Tests/Patterns.DDD.Tests.csproj" />
+    <Project Path="tests/Patterns.DDD.Application.Tests/Patterns.DDD.Application.Tests.csproj" />
   </Folder>
 </Solution>

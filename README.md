@@ -1,6 +1,15 @@
 # Patterns.DDD
 
-Small, dependency-free Domain-Driven Design building blocks for .NET 8 and .NET 10.
+Small Domain-Driven Design building blocks for .NET 8 and .NET 10, in three packages you take
+only as far as you need:
+
+| Package | Depends on | What it gives you |
+| --- | --- | --- |
+| `Patterns.DDD` | nothing | Entities, aggregates, domain events, `Result`, rules |
+| `Patterns.DDD.Application` | `Patterns.DDD` | Unit of work, integration events, message envelopes, publishers, handlers, event mapping |
+| `Patterns.DDD.EntityFrameworkCore` | the above + EF Core | Transactional outbox and inbox |
+
+All three are versioned together.
 
 ```bash
 dotnet add package Patterns.DDD
@@ -72,9 +81,28 @@ foreach (var e in order.DequeueDomainEvents())
     await publisher.Publish(e);
 ```
 
+## Application layer
+
+Domain events are internal and change freely. Integration events are a published contract with a
+stable wire name, and they change by adding a new version. `IntegrationEventMap` is the one place
+where one becomes the other; unmapped domain events never leave the bounded context.
+
+```csharp
+[MessageType("minibtc.block-connected.v1")]
+public sealed record BlockConnectedV1(string BlockHash, int Height) : IIntegrationEvent;
+
+var map = new IntegrationEventMap()
+    .Map((BlockConnected e) => new BlockConnectedV1(e.Hash.ToString(), e.Height));
+```
+
+Delivery is at-least-once. `IMessagePublisher` returns only after the transport accepted a message,
+and `IMessageHandler<T>` must be idempotent or run behind the inbox. `MessageContext.MessageId` is
+the deduplication key.
+
 ## Releasing
 
-Push a tag `vX.Y.Z`; the publish workflow tests, packs and pushes that version to nuget.org.
+Push a tag `vX.Y.Z`; the publish workflow tests, packs every package at that version and pushes
+them to nuget.org.
 It needs a repository secret `NUGET_API_KEY`.
 
 ## License
