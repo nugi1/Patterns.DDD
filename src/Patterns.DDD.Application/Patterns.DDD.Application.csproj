@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageId>Patterns.DDD.Application</PackageId>
-    <Description>Application-layer contracts for Patterns.DDD: unit of work, integration events with stable names, message envelopes, publishers, handlers and domain-to-integration event mapping. No third-party dependencies.</Description>
-    <PackageTags>ddd;domain-driven-design;integration-events;outbox;inbox;messaging;clean-architecture</PackageTags>
+    <Description>Application-layer contracts for Patterns.DDD: unit of work, integration events and the domain-to-integration event map. No third-party dependencies.</Description>
+    <PackageTags>ddd;domain-driven-design;integration-events;unit-of-work;clean-architecture</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

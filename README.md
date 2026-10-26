@@ -6,8 +6,8 @@ only as far as you need:
 | Package | Depends on | What it gives you |
 | --- | --- | --- |
 | `Patterns.DDD` | nothing | Entities, aggregates, domain events, `Result`, rules |
-| `Patterns.DDD.Application` | `Patterns.DDD` | Unit of work, integration events, message envelopes, publishers, handlers, event mapping |
-| `Patterns.DDD.EntityFrameworkCore` | the above + EF Core | Transactional outbox and inbox |
+| `Patterns.DDD.Application` | `Patterns.DDD` | Unit of work, integration events, domain-to-integration event map |
+| `Patterns.DDD.MassTransit` | the above + MassTransit v8 EF Core | Domain events → MassTransit's transactional outbox; inbox on consumers |
 
 All three are versioned together.
 
@@ -73,31 +73,95 @@ Result<Receipt> receipt = Parse(request)
 return receipt.Match(r => Results.Ok(r), e => Results.BadRequest(e.Code));
 ```
 
-Dequeue events after saving, then publish them:
+Without the outbox package, dequeue events after saving and dispatch them yourself:
 
 ```csharp
 await repository.SaveAsync(order);
 foreach (var e in order.DequeueDomainEvents())
-    await publisher.Publish(e);
+    await dispatcher.Dispatch(e);
 ```
+
+That loses events if the process dies between the save and the dispatch. The EF Core package closes
+that gap.
 
 ## Application layer
 
-Domain events are internal and change freely. Integration events are a published contract with a
-stable wire name, and they change by adding a new version. `IntegrationEventMap` is the one place
-where one becomes the other; unmapped domain events never leave the bounded context.
+Domain events are internal and change freely. Integration events are a published contract, and they
+change by adding a new version. `IntegrationEventMap` is the one place where one becomes the other;
+unmapped domain events never leave the bounded context. Give each contract a stable wire name with
+MassTransit's `[MessageUrn]` so renaming the class never breaks a consumer.
 
 ```csharp
-[MessageType("minibtc.block-connected.v1")]
+[MessageUrn("minibtc.block-connected.v1")]
 public sealed record BlockConnectedV1(string BlockHash, int Height) : IIntegrationEvent;
 
-var map = new IntegrationEventMap()
-    .Map((BlockConnected e) => new BlockConnectedV1(e.Hash.ToString(), e.Height));
+map.Map((BlockConnected e) => new BlockConnectedV1(e.Hash.ToString(), e.Height));
 ```
 
-Delivery is at-least-once. `IMessagePublisher` returns only after the transport accepted a message,
-and `IMessageHandler<T>` must be idempotent or run behind the inbox. `MessageContext.MessageId` is
-the deduplication key.
+`IUnitOfWork.SaveChangesAsync` has the same signature as `DbContext.SaveChangesAsync`, so a DbContext
+implements it just by declaring it.
+
+## Outbox and inbox with MassTransit (EF Core + PostgreSQL + RabbitMQ)
+
+```csharp
+// Program.cs
+builder.Services.AddDbContext<NodeDbContext>((sp, o) => o.UseNpgsql(cs).UseDomainEventOutbox(sp));
+builder.Services.AddMassTransit(x =>
+{
+    x.AddDomainEventOutbox<NodeDbContext>(map => map
+        .Map((BlockConnected e) => new BlockConnectedV1(e.Hash.ToString(), e.Height)));
+
+    x.AddConsumer<PushBlockToSignalRConsumer>();
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host(builder.Configuration.GetConnectionString("rabbitmq"));
+        cfg.ConfigureEndpoints(context);
+    });
+});
+
+// NodeDbContext.OnModelCreating, last line
+modelBuilder.AddDomainEventOutbox();
+```
+
+**Publishing.** When `SaveChangesAsync` starts, an interceptor maps every tracked aggregate's pending
+domain events and publishes them through the scoped `IPublishEndpoint`.
+
+- With MassTransit's EF Core outbox, that endpoint adds outbox rows to the same DbContext. They commit
+  or roll back together with the aggregate.
+- MassTransit's delivery service then sends them to RabbitMQ.
+- Events are cleared from aggregates only after the save succeeds. A failed save keeps them, and
+  retrying the save on the same context does not publish them twice.
+- `IBus` is never used, because it bypasses the outbox.
+- Synchronous `SaveChanges` with pending events throws, because publishing to the outbox is async.
+
+**Inbox.** Every endpoint configured by `ConfigureEndpoints` gets MassTransit's EF Core inbox and
+outbox:
+
+- A redelivered message with the same `MessageId` is skipped for that consumer endpoint.
+- The consumer's DbContext changes, the inbox record, and any events raised while handling it are
+  saved in one transaction after the consumer returns.
+
+For notifications that come from outside, such as Bitcoin Core ZMQ, derive the id from a natural key:
+
+```csharp
+await publishEndpoint.Publish(new BlockNotified(hash),
+    ctx => ctx.MessageId = MessageIds.FromKey($"block:{hash}"));
+```
+
+The inbox remembers ids for the outbox's `DuplicateDetectionWindow` (MassTransit's default is 30
+minutes). Raise it if redeliveries can arrive later than that.
+
+**Delivery and order.** Delivery is at-least-once, so consumers must be idempotent, which is what the
+inbox gives you. Messages saved in one transaction are delivered in order. Across transactions, and
+with concurrent consumers, order is not guaranteed. A consumer that needs order should use a field such
+as block height, or run with `ConcurrentMessageLimit = 1`.
+
+### Licensing
+
+This package depends on **MassTransit v8**, which is Apache 2.0. MassTransit v9 and later are
+commercially licensed, and the v8 line was announced to receive security patches through 2026.
+Moving this package to v9 would require every consumer of it to hold a MassTransit license, so it will
+only happen as a deliberate major version.
 
 ## Releasing
 

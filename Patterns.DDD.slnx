@@ -2,9 +2,11 @@
   <Folder Name="/src/">
     <Project Path="src/Patterns.DDD/Patterns.DDD.csproj" />
     <Project Path="src/Patterns.DDD.Application/Patterns.DDD.Application.csproj" />
+    <Project Path="src/Patterns.DDD.MassTransit/Patterns.DDD.MassTransit.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Patterns.DDD.Tests/Patterns.DDD.Tests.csproj" />
     <Project Path="tests/Patterns.DDD.Application.Tests/Patterns.DDD.Application.Tests.csproj" />
+    <Project Path="tests/Patterns.DDD.MassTransit.Tests/Patterns.DDD.MassTransit.Tests.csproj" />
   </Folder>
 </Solution>

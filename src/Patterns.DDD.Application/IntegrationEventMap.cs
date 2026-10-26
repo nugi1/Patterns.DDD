@@ -18,10 +18,7 @@ public sealed class IntegrationEventMap
     /// Return null from <paramref name="map"/> to skip a particular event. Registering several maps for
     /// one domain event publishes several integration events, in registration order.
     /// </summary>
-    /// <exception cref="InvalidOperationException">
-    /// <typeparamref name="TIntegrationEvent"/> has no <see cref="MessageTypeAttribute"/>, or the map is
-    /// already in use. Both surface at startup rather than on the first publish.
-    /// </exception>
+    /// <exception cref="InvalidOperationException">The map is already in use.</exception>
     public IntegrationEventMap Map<TDomainEvent, TIntegrationEvent>(Func<TDomainEvent, TIntegrationEvent?> map)
         where TDomainEvent : IDomainEvent
         where TIntegrationEvent : class, IIntegrationEvent
@@ -29,8 +26,6 @@ public sealed class IntegrationEventMap
         ArgumentNullException.ThrowIfNull(map);
         if (_frozen)
             throw new InvalidOperationException("The map is in use; configure it before the first Translate.");
-
-        _ = MessageTypes.NameOf<TIntegrationEvent>();
 
         if (!_maps.TryGetValue(typeof(TDomainEvent), out var maps))
             _maps[typeof(TDomainEvent)] = maps = [];

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Patterns.DDD.MassTransit</PackageId>
+    <Description>Publishes Patterns.DDD aggregates' domain events as integration events through MassTransit's EF Core transactional outbox, in the same transaction as the aggregate's changes, with MassTransit's inbox for idempotent consumers. Built on MassTransit v8 (Apache 2.0).</Description>
+    <PackageTags>ddd;domain-events;integration-events;outbox;inbox;masstransit;efcore;rabbitmq</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Patterns.DDD.Application/Patterns.DDD.Application.csproj" />
+  </ItemGroup>
+</Project>

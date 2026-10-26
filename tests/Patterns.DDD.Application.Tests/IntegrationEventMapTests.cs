@@ -4,14 +4,8 @@ public class IntegrationEventMapTests
 {
     private sealed record BlockConnected(string Hash, int Height, bool IsReorg) : IDomainEvent;
     private sealed record InternalOnly : IDomainEvent;
-
-    [MessageType("test.block-connected.v1")]
     private sealed record BlockConnectedV1(string Hash, int Height) : IIntegrationEvent;
-
-    [MessageType("test.tip-changed.v1")]
     private sealed record TipChangedV1(string Hash) : IIntegrationEvent;
-
-    private sealed record Unnamed : IIntegrationEvent;
 
     [Fact]
     public void Translates_mapped_events_in_registration_order()
@@ -41,11 +35,6 @@ public class IntegrationEventMapTests
     }
 
     [Fact]
-    public void Unnamed_integration_events_are_rejected_at_registration() =>
-        Assert.Throws<InvalidOperationException>(() =>
-            new IntegrationEventMap().Map((BlockConnected _) => new Unnamed()));
-
-    [Fact]
     public void Map_cannot_change_once_in_use()
     {
         var map = new IntegrationEventMap();
@@ -54,13 +43,4 @@ public class IntegrationEventMapTests
         Assert.Throws<InvalidOperationException>(() =>
             map.Map((BlockConnected e) => new TipChangedV1(e.Hash)));
     }
-
-    [Fact]
-    public void Wire_name_comes_from_the_attribute() =>
-        Assert.Equal("test.block-connected.v1", MessageTypes.NameOf<BlockConnectedV1>());
-
-    [Fact]
-    public void Envelope_requires_an_id() =>
-        Assert.Throws<ArgumentException>(() =>
-            new MessageEnvelope(" ", "test.tip-changed.v1", "{}", DateTimeOffset.UtcNow));
 }
