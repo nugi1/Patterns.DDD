@@ -156,6 +156,12 @@ inbox gives you. Messages saved in one transaction are delivered in order. Acros
 with concurrent consumers, order is not guaranteed. A consumer that needs order should use a field such
 as block height, or run with `ConcurrentMessageLimit = 1`.
 
+### EF Core versions
+
+On .NET 10 everything runs on EF Core 10. On .NET 8, MassTransit 8.5 brings in EF Core 9, so
+use EF Core 9 builds of your other EF packages there too, for example `Npgsql.EntityFrameworkCore.PostgreSQL`
+9.x. An EF Core 8 provider fails at runtime with a `TypeLoadException`.
+
 ### Licensing
 
 This package depends on **MassTransit v8**, which is Apache 2.0. MassTransit v9 and later are
